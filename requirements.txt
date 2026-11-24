@@ -1,0 +1,8 @@
+# Serving only (API, Docker image, Vercel). Pinned so the saved model loads with the exact library versions it was trained with.
+fastapi==0.165.0
+pydantic==2.13.5
+uvicorn==0.54.0
+numpy==2.5.3
+scipy==1.18.1
+scikit-learn==1.9.1
+joblib==1.6.0

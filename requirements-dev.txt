@@ -1,0 +1,7 @@
+# Training, plots and tests. In CI, torch is installed first from the CPU-only index (see .github/workflows/ci.yml).
+-r requirements.txt
+pandas==3.0.5
+matplotlib==3.11.2
+torch==2.15.0
+pytest==9.1.1
+httpx==0.28.1
