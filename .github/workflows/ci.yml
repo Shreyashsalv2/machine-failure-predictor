@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - name: Install dependencies (CPU-only PyTorch)
+        run: |
+          pip install torch==2.15.0 --index-url https://download.pytorch.org/whl/cpu
+          pip install -r requirements-dev.txt
+      - name: Unit, model and API tests
+        run: pytest
+      - name: Retrain from scratch and compare with committed metrics
+        run: python scripts/check_reproducible.py
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t machine-failure-predictor .
+      - name: Run container and call the API
+        run: |
+          docker run -d -p 8000:8000 --name mfp machine-failure-predictor
+          for i in $(seq 1 30); do curl -sf http://localhost:8000/health && break; sleep 1; done
+          curl -sf http://localhost:8000/health
+          curl -sf -X POST http://localhost:8000/predict -H 'Content-Type: application/json' \
+            -d '{"type":"L","air_temperature_k":300,"process_temperature_k":310,"rotational_speed_rpm":1350,"torque_nm":62,"tool_wear_min":210}' \
+            | tee out.json
+          python3 -c "import json; d=json.load(open('out.json')); assert 0 <= d['failure_probability'] <= 1; print('predict OK', d['failure_probability'])"
+      - name: Container logs
+        if: always()
+        run: docker logs mfp

@@ -1,0 +1,8 @@
+tests
+data
+scripts
+docs
+.github
+Dockerfile
+.dockerignore
+requirements-dev.txt
