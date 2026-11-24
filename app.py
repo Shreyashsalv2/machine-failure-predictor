@@ -68,9 +68,12 @@ def predict(reading: SensorReading):
     )
 
 
-@app.get("/", include_in_schema=False)
-def index():
-    return FileResponse(PUBLIC / "index.html")
+# On Vercel, public/ is served by the CDN and is not bundled into the Python function,
+# so the page and figures are only mounted here when the folder exists (local runs and Docker).
+if (PUBLIC / "index.html").is_file():
+    @app.get("/", include_in_schema=False)
+    def index():
+        return FileResponse(PUBLIC / "index.html")
 
-
-app.mount("/figures", StaticFiles(directory=PUBLIC / "figures"), name="figures")
+if (PUBLIC / "figures").is_dir():
+    app.mount("/figures", StaticFiles(directory=PUBLIC / "figures"), name="figures")
