@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Machine Failure Predictor</title>
+<meta name="description" content="Predicts machine failure from sensor readings. pandas + scikit-learn vs PyTorch on the AI4I 2020 dataset, served with FastAPI.">
+<style>
+  :root { --bg:#f7f7fb; --card:#fff; --ink:#16161d; --muted:#5d5d6e; --line:#e3e3ec; --accent:#5b3cf5; --ok:#0f8a5f; --bad:#c42b3c; --warn:#9a6700; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0f0f14; --card:#17171f; --ink:#ececf3; --muted:#a2a2b5; --line:#2a2a36; --accent:#8b74ff; --ok:#3ccf91; --bad:#ff6b7d; --warn:#e3b341; } }
+  * { box-sizing:border-box; }
+  body { margin:0; font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; background:var(--bg); color:var(--ink); }
+  main { max-width:980px; margin:0 auto; padding:28px 18px 48px; }
+  h1 { font-size:1.7rem; margin:0 0 4px; }
+  h2 { font-size:1.15rem; margin:0 0 12px; }
+  p.lead { color:var(--muted); margin:0 0 22px; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+  @media (max-width:760px) { .grid { grid-template-columns:1fr; } }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:18px; }
+  label { display:block; font-size:.85rem; color:var(--muted); margin:10px 0 4px; }
+  input, select { width:100%; padding:9px 10px; border:1px solid var(--line); border-radius:9px; background:var(--bg); color:var(--ink); font:inherit; }
+  .row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .presets { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:6px; }
+  button { font:inherit; border:1px solid var(--line); background:var(--bg); color:var(--ink); padding:6px 11px; border-radius:999px; cursor:pointer; font-size:.85rem; }
+  button.primary { background:var(--accent); border-color:var(--accent); color:#fff; padding:10px 16px; border-radius:10px; width:100%; margin-top:16px; font-size:1rem; }
+  .prob { font-size:2.6rem; font-weight:700; margin:4px 0; }
+  .bar { height:10px; background:var(--line); border-radius:99px; overflow:hidden; }
+  .bar > div { height:100%; width:0; background:var(--accent); transition:width .3s; }
+  .verdict { font-weight:600; margin-top:10px; }
+  .verdict.fail { color:var(--bad); } .verdict.ok { color:var(--ok); }
+  .muted { color:var(--muted); font-size:.88rem; }
+  .warn { color:var(--warn); font-size:.88rem; margin-top:8px; }
+  table { width:100%; border-collapse:collapse; font-size:.9rem; }
+  th, td { text-align:left; padding:8px 6px; border-bottom:1px solid var(--line); }
+  th { color:var(--muted); font-weight:600; }
+  tr.served td { font-weight:600; }
+  .figs { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:14px; margin-top:14px; }
+  .figs img { width:100%; border-radius:10px; border:1px solid var(--line); background:#fff; }
+  code { font-size:.85em; }
+  a { color:var(--accent); }
+  .section { margin-top:18px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Machine Failure Predictor</h1>
+  <p class="lead">Enter one sensor reading and get the probability that the machine fails. The model is trained on the public AI4I 2020 predictive-maintenance dataset (10,000 readings, 3.4% failures). The page calls a FastAPI service; the same API runs in Docker.</p>
+
+  <div class="grid">
+    <form class="card" id="form">
+      <h2>Sensor reading</h2>
+      <div class="presets" aria-label="Example readings">
+        <button type="button" data-preset="normal">Normal</button>
+        <button type="button" data-preset="overstrain">Worn tool, high torque</button>
+        <button type="button" data-preset="heat">Small temp. gap, slow spindle</button>
+        <button type="button" data-preset="power">Very low power</button>
+      </div>
+      <label for="type">Product quality</label>
+      <select id="type" name="type"><option value="L">L (low)</option><option value="M">M (medium)</option><option value="H">H (high)</option></select>
+      <div class="row">
+        <div><label for="air_temperature_k">Air temperature (K)</label><input id="air_temperature_k" name="air_temperature_k" type="number" step="0.1" required></div>
+        <div><label for="process_temperature_k">Process temperature (K)</label><input id="process_temperature_k" name="process_temperature_k" type="number" step="0.1" required></div>
+      </div>
+      <div class="row">
+        <div><label for="rotational_speed_rpm">Rotational speed (rpm)</label><input id="rotational_speed_rpm" name="rotational_speed_rpm" type="number" step="1" required></div>
+        <div><label for="torque_nm">Torque (Nm)</label><input id="torque_nm" name="torque_nm" type="number" step="0.1" required></div>
+      </div>
+      <label for="tool_wear_min">Tool wear (min)</label>
+      <input id="tool_wear_min" name="tool_wear_min" type="number" step="1" required>
+      <button class="primary" type="submit">Predict</button>
+    </form>
+
+    <section class="card" aria-live="polite">
+      <h2>Prediction</h2>
+      <div class="prob" id="prob">–</div>
+      <div class="bar"><div id="bar"></div></div>
+      <div class="verdict" id="verdict"></div>
+      <p class="muted" id="detail">Pick an example or enter values, then press Predict.</p>
+      <div id="warnings"></div>
+      <p class="muted" id="derived"></p>
+    </section>
+  </div>
+
+  <section class="card section">
+    <h2>How the models compare</h2>
+    <p class="muted">Stratified 5-fold cross-validation on 8,000 rows, then one score on a 2,000-row held-out test set. PR-AUC is the main metric because failures are rare. Each model's threshold is chosen from its cross-validation predictions, never from the test set. The live API serves the best scikit-learn model; the PyTorch network is too large for this host's serverless functions, so it is compared offline and in CI.</p>
+    <div style="overflow-x:auto"><table id="cmp"><thead><tr><th>Model</th><th>CV PR-AUC</th><th>Test PR-AUC</th><th>Test precision</th><th>Test recall</th></tr></thead><tbody></tbody></table></div>
+    <div class="figs">
+      <img src="figures/pr_curves.png" alt="Precision-recall curves of the four models on the test set" loading="lazy">
+      <img src="figures/confusion_matrix.png" alt="Confusion matrix of the served model on the test set" loading="lazy">
+      <img src="figures/permutation_importance.png" alt="Permutation importance of each input for the served model" loading="lazy">
+    </div>
+  </section>
+
+  <p class="muted section">Data: S. Matzka, <em>AI4I 2020 Predictive Maintenance Dataset</em>, UCI Machine Learning Repository, CC BY 4.0. It is synthetic data modelled on a real milling process, so these scores are not a claim about real machines. API docs: <a href="/docs">/docs</a>. Code: <a href="https://github.com/Shreyashsalv2/machine-failure-predictor">github.com/Shreyashsalv2/machine-failure-predictor</a>.</p>
+</main>
+<script>
+const PRESETS = {
+  normal:     { type: "L", air_temperature_k: 300.0, process_temperature_k: 310.0, rotational_speed_rpm: 1500, torque_nm: 40.0, tool_wear_min: 100 },
+  overstrain: { type: "L", air_temperature_k: 300.0, process_temperature_k: 310.0, rotational_speed_rpm: 1350, torque_nm: 62.0, tool_wear_min: 210 },
+  heat:       { type: "M", air_temperature_k: 302.8, process_temperature_k: 311.0, rotational_speed_rpm: 1300, torque_nm: 52.0, tool_wear_min: 60 },
+  power:      { type: "L", air_temperature_k: 300.0, process_temperature_k: 310.0, rotational_speed_rpm: 2800, torque_nm: 5.0, tool_wear_min: 40 },
+};
+const form = document.getElementById("form");
+function fill(p) { for (const [k, v] of Object.entries(p)) form.elements[k].value = v; }
+document.querySelectorAll("[data-preset]").forEach(b => b.addEventListener("click", () => { fill(PRESETS[b.dataset.preset]); form.requestSubmit(); }));
+fill(PRESETS.normal);
+
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const body = { type: form.elements.type.value };
+  for (const k of ["air_temperature_k", "process_temperature_k", "rotational_speed_rpm", "torque_nm", "tool_wear_min"]) body[k] = Number(form.elements[k].value);
+  document.getElementById("detail").textContent = "Predicting…";
+  try {
+    const r = await fetch("/predict", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const d = await r.json();
+    if (!r.ok) {
+      const msg = Array.isArray(d.detail) ? d.detail.map(x => `${x.loc.slice(-1)[0]}: ${x.msg}`).join("; ") : "Request failed";
+      document.getElementById("detail").textContent = msg;
+      return;
+    }
+    const pct = (d.failure_probability * 100).toFixed(1);
+    document.getElementById("prob").textContent = pct + "%";
+    document.getElementById("bar").style.width = Math.max(1, d.failure_probability * 100) + "%";
+    const v = document.getElementById("verdict");
+    v.textContent = d.predicted_failure ? "Likely to fail: flag for maintenance" : "Not expected to fail";
+    v.className = "verdict " + (d.predicted_failure ? "fail" : "ok");
+    document.getElementById("detail").textContent = `Model: ${d.model.replace(/_/g, " ")}. Flags a failure at ${(d.threshold * 100).toFixed(1)}% or above.`;
+    document.getElementById("derived").textContent = `Derived: temperature gap ${d.derived.temperature_diff_k} K · power ${d.derived.power_w} W · wear × torque ${d.derived.wear_x_torque}`;
+    document.getElementById("warnings").innerHTML = d.warnings.map(w => `<div class="warn">⚠ ${esc(w)}</div>`).join("");
+  } catch (err) {
+    document.getElementById("detail").textContent = "Could not reach the API.";
+  }
+});
+
+fetch("/model-info").then(r => r.json()).then(info => {
+  const tbody = document.querySelector("#cmp tbody");
+  tbody.innerHTML = info.comparison.map(m => `<tr class="${m.model === info.served_model ? "served" : ""}">
+    <td>${esc(m.label)}${m.model === info.served_model ? " (served)" : ""}</td>
+    <td>${m.cv_pr_auc_mean.toFixed(3)} ± ${m.cv_pr_auc_std.toFixed(3)}</td>
+    <td>${m.test.pr_auc.toFixed(3)}</td><td>${m.test.precision.toFixed(3)}</td><td>${m.test.recall.toFixed(3)}</td></tr>`).join("");
+}).catch(() => {});
+form.requestSubmit();
+</script>
+</body>
+</html>

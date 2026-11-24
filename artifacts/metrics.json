@@ -1,0 +1,237 @@
+{
+  "project_version": "1.0.0",
+  "trained_at": "2026-11-24T15:38:57Z",
+  "fast_mode": false,
+  "dataset": {
+    "name": "AI4I 2020 Predictive Maintenance Dataset (UCI)",
+    "sha256": "dc6630cd9b1f0f853922fad78a1b6436570d3f1ec863f1dd5c4340ac56bc8a8e",
+    "rows": 10000,
+    "failures": 339,
+    "failure_rate": 0.0339,
+    "type_counts": {
+      "L": 6000,
+      "M": 2997,
+      "H": 1003
+    },
+    "missing_values": 0,
+    "duplicate_rows": 0,
+    "failure_without_mode": 9,
+    "mode_without_failure": 18,
+    "notes": [
+      "9 rows are failures with no failure mode flagged; kept as failures.",
+      "18 rows flag a failure mode (18 RNF) but are labelled as not failing; the label used is the 'Machine failure' column."
+    ]
+  },
+  "split": {
+    "train_rows": 8000,
+    "test_rows": 2000,
+    "train_failures": 271,
+    "test_failures": 68,
+    "seed": 42,
+    "cv_folds": 5
+  },
+  "raw_features": [
+    "type",
+    "air_temperature_k",
+    "process_temperature_k",
+    "rotational_speed_rpm",
+    "torque_nm",
+    "tool_wear_min"
+  ],
+  "model_features": [
+    "type_L",
+    "type_M",
+    "type_H",
+    "air_temperature_k",
+    "process_temperature_k",
+    "rotational_speed_rpm",
+    "torque_nm",
+    "tool_wear_min",
+    "temperature_diff_k",
+    "power_w",
+    "wear_x_torque"
+  ],
+  "training_ranges": {
+    "air_temperature_k": [
+      295.3,
+      304.5
+    ],
+    "process_temperature_k": [
+      305.7,
+      313.8
+    ],
+    "rotational_speed_rpm": [
+      1168.0,
+      2886.0
+    ],
+    "torque_nm": [
+      3.8,
+      76.6
+    ],
+    "tool_wear_min": [
+      0.0,
+      253.0
+    ]
+  },
+  "models": {
+    "logistic_regression": {
+      "label": "Logistic regression (baseline)",
+      "cv_pr_auc_mean": 0.4585,
+      "cv_pr_auc_std": 0.0417,
+      "cv_oof": {
+        "pr_auc": 0.4554,
+        "roc_auc": 0.9223,
+        "threshold": 0.9221,
+        "precision": 0.5349,
+        "recall": 0.4244,
+        "f1": 0.4733,
+        "confusion_matrix": {
+          "tn": 7629,
+          "fp": 100,
+          "fn": 156,
+          "tp": 115
+        }
+      },
+      "test": {
+        "pr_auc": 0.4297,
+        "roc_auc": 0.9385,
+        "threshold": 0.9221,
+        "precision": 0.5319,
+        "recall": 0.3676,
+        "f1": 0.4348,
+        "confusion_matrix": {
+          "tn": 1910,
+          "fp": 22,
+          "fn": 43,
+          "tp": 25
+        }
+      },
+      "train_seconds": 0.1
+    },
+    "random_forest": {
+      "label": "Random forest",
+      "cv_pr_auc_mean": 0.8939,
+      "cv_pr_auc_std": 0.0247,
+      "cv_oof": {
+        "pr_auc": 0.8932,
+        "roc_auc": 0.979,
+        "threshold": 0.4208,
+        "precision": 0.93,
+        "recall": 0.8339,
+        "f1": 0.8794,
+        "confusion_matrix": {
+          "tn": 7712,
+          "fp": 17,
+          "fn": 45,
+          "tp": 226
+        }
+      },
+      "test": {
+        "pr_auc": 0.8757,
+        "roc_auc": 0.9779,
+        "threshold": 0.4208,
+        "precision": 0.9492,
+        "recall": 0.8235,
+        "f1": 0.8819,
+        "confusion_matrix": {
+          "tn": 1929,
+          "fp": 3,
+          "fn": 12,
+          "tp": 56
+        }
+      },
+      "train_seconds": 11.0
+    },
+    "gradient_boosting": {
+      "label": "Gradient boosting",
+      "cv_pr_auc_mean": 0.883,
+      "cv_pr_auc_std": 0.02,
+      "cv_oof": {
+        "pr_auc": 0.8805,
+        "roc_auc": 0.9742,
+        "threshold": 0.5302,
+        "precision": 0.9399,
+        "recall": 0.8081,
+        "f1": 0.869,
+        "confusion_matrix": {
+          "tn": 7715,
+          "fp": 14,
+          "fn": 52,
+          "tp": 219
+        }
+      },
+      "test": {
+        "pr_auc": 0.9072,
+        "roc_auc": 0.9884,
+        "threshold": 0.5302,
+        "precision": 0.9492,
+        "recall": 0.8235,
+        "f1": 0.8819,
+        "confusion_matrix": {
+          "tn": 1929,
+          "fp": 3,
+          "fn": 12,
+          "tp": 56
+        }
+      },
+      "train_seconds": 2.5
+    },
+    "pytorch_mlp": {
+      "label": "PyTorch neural network (MLP)",
+      "cv_pr_auc_mean": 0.7616,
+      "cv_pr_auc_std": 0.0219,
+      "cv_oof": {
+        "pr_auc": 0.7574,
+        "roc_auc": 0.958,
+        "threshold": 0.9123,
+        "precision": 0.7262,
+        "recall": 0.7048,
+        "f1": 0.7154,
+        "confusion_matrix": {
+          "tn": 7657,
+          "fp": 72,
+          "fn": 80,
+          "tp": 191
+        }
+      },
+      "test": {
+        "pr_auc": 0.7469,
+        "roc_auc": 0.9751,
+        "threshold": 0.9123,
+        "precision": 0.7344,
+        "recall": 0.6912,
+        "f1": 0.7121,
+        "confusion_matrix": {
+          "tn": 1915,
+          "fp": 17,
+          "fn": 21,
+          "tp": 47
+        }
+      },
+      "train_seconds": 50.1
+    }
+  },
+  "served_model": "random_forest",
+  "best_model_overall": "random_forest",
+  "environment": {
+    "python": "3.13.18",
+    "scikit_learn": "1.9.1",
+    "numpy": "2.5.3"
+  },
+  "total_seconds": 65.1,
+  "figures": {
+    "files": [
+      "pr_curves.png",
+      "confusion_matrix.png",
+      "permutation_importance.png"
+    ]
+  },
+  "permutation_importance": {
+    "type": 0.0374,
+    "air_temperature_k": 0.4444,
+    "process_temperature_k": 0.193,
+    "rotational_speed_rpm": 0.5007,
+    "torque_nm": 0.6552,
+    "tool_wear_min": 0.344
+  }
+}
